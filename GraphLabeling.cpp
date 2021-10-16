@@ -28,6 +28,14 @@ inline bool chmin(T &a, T b)
 const int inf = (int)1e9 + 7;
 const long long INF = 1LL << 60;
 
+uint32_t xor64(void)
+{
+  static uint64_t x = 88172645463325252ULL;
+  x = x ^ (x << 13);
+  x = x ^ (x >> 7);
+  return x = x ^ (x << 17);
+}
+
 int n;
 int m;
 std::vector<std::vector<int>> graph;
@@ -87,7 +95,7 @@ void input()
   }
 }
 
-bool simulate(const std::vector<int> &node_list, std::vector<int> &node_val, std::vector<int> &used_edge_val)
+int simulate(const std::vector<int> &node_list, std::vector<int> &node_val, std::vector<int> &used_edge_val)
 {
   for (const auto &e : used_edge_val)
     edge_val[e] = false;
@@ -101,7 +109,7 @@ bool simulate(const std::vector<int> &node_list, std::vector<int> &node_val, std
     {
       if (node_val_cur > MAX_NODE_VAL)
       {
-        return false;
+        return inf;
       }
       bool node_val_ok = true;
       for (const auto &to : graph[from])
@@ -133,10 +141,11 @@ bool simulate(const std::vector<int> &node_list, std::vector<int> &node_val, std
     }
     node_val_cur += 1;
   }
-  return true;
+  return node_val_cur - 1;
 }
 int main()
 {
+  auto start = std::chrono::system_clock::now();
   input();
   const int center = find_center();
   std::vector<int> d(n);
@@ -147,7 +156,28 @@ int main()
   std::sort(node_list.begin(), node_list.end(), [&](int i, int j)
             { return d[i] < d[j]; });
   std::vector<int> node_val, used_edge_val;
-  simulate(node_list, node_val, used_edge_val);
+  int max_val_min = simulate(node_list, node_val, used_edge_val);
+  for (int simulate_count = 0;; ++simulate_count)
+  {
+    if (simulate_count == 5)
+    {
+      auto end = std::chrono::system_clock::now();
+      const double time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+      if (time > 9000)
+        break;
+      simulate_count = 0;
+    }
+    int p = xor64() % n;
+    int q = xor64() % n;
+    if (p == q)
+      continue;
+    std::swap(node_list[p], node_list[q]);
+    const int max_val = simulate(node_list, node_val, used_edge_val);
+    if (not(chmin(max_val_min, max_val) or max_val_min == max_val))
+    {
+      std::swap(node_list[p], node_list[q]);
+    }
+  }
   for (int i = 0; i < n; ++i)
   {
     cout << node_val[i] << " \n"[i + 1 == n];
