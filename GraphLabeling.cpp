@@ -39,7 +39,7 @@ uint32_t xor64(void)
 int n;
 int m;
 std::vector<std::vector<int>> graph;
-
+std::vector<std::vector<int>> g;
 const int MAX_NODE_VAL = 2085044;
 bool edge_val[MAX_NODE_VAL + 1];
 int bfs(const int s, std::vector<int> &d, std::queue<int> &q)
@@ -99,6 +99,8 @@ int simulate(const std::vector<int> &node_list, std::vector<int> &node_val, std:
 {
   for (const auto &e : used_edge_val)
     edge_val[e] = false;
+  g.clear();
+  g.resize(n);
   used_edge_val.clear();
   node_val.clear();
   node_val.resize(n, -1);
@@ -112,10 +114,8 @@ int simulate(const std::vector<int> &node_list, std::vector<int> &node_val, std:
         return inf;
       }
       bool node_val_ok = true;
-      for (const auto &to : graph[from])
+      for (const auto &to : g[from])
       {
-        if (node_val[to] == -1)
-          continue;
         const int diff = std::abs(node_val_cur - node_val[to]);
         if (edge_val[diff])
         {
@@ -127,11 +127,9 @@ int simulate(const std::vector<int> &node_list, std::vector<int> &node_val, std:
         break;
       node_val_cur += 1;
     }
-    node_val[from] = node_val_cur;
-    for (const auto &to : graph[from])
+
+    for (const auto &to : g[from])
     {
-      if (node_val[to] == -1)
-        continue;
       const int diff = std::abs(node_val_cur - node_val[to]);
       if (not edge_val[diff])
       {
@@ -139,6 +137,11 @@ int simulate(const std::vector<int> &node_list, std::vector<int> &node_val, std:
         used_edge_val.emplace_back(diff);
       }
     }
+    for (const auto &to : graph[from])
+    {
+      g[to].emplace_back(from);
+    }
+    node_val[from] = node_val_cur;
     node_val_cur += 1;
   }
   return node_val_cur - 1;
@@ -157,8 +160,10 @@ int main()
             { return d[i] < d[j]; });
   std::vector<int> node_val, used_edge_val;
   int max_val_min = simulate(node_list, node_val, used_edge_val);
+  int simu_cnt = 0;
   for (int simulate_count = 0;; ++simulate_count)
   {
+    simu_cnt += 1;
     if (simulate_count == 5)
     {
       auto end = std::chrono::system_clock::now();
@@ -178,6 +183,7 @@ int main()
       std::swap(node_list[p], node_list[q]);
     }
   }
+  std::cerr << "simu:" << simu_cnt << endl;
   for (int i = 0; i < n; ++i)
   {
     cout << node_val[i] << " \n"[i + 1 == n];
