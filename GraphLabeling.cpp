@@ -147,7 +147,7 @@ int main()
   std::sort(node_list.begin(), node_list.end(), [&](int i, int j)
             { return d[i] < d[j]; });
   std::vector<int> node_val, used_edge_val;
-  std::cerr << simulate(node_list, node_val, used_edge_val) << endl;
+  simulate(node_list, node_val, used_edge_val);
   for (int i = 0; i < n; ++i)
   {
     cout << node_val[i] << " \n"[i + 1 == n];
