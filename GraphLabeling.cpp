@@ -142,6 +142,7 @@ int simulate(const std::vector<int> &node_list, std::vector<int> &node_val)
       }
       node_val_cur += 1;
     }
+    assert(not used_node_val[node_val_cur]);
     used_node_val[node_val_cur] = true;
     node_val[from] = node_val_cur;
     node_val_cur += 1;
@@ -164,6 +165,19 @@ void erase_node_val(const std::vector<int> &node_list, std::vector<int> &node_va
     }
     used_node_val[node_val[from]] = false;
     node_val[from] = -1;
+  }
+}
+
+void used_val_from_node_val(const std::vector<int> &node_val)
+{
+  for (int from = 0; from < n; ++from)
+  {
+    used_node_val[node_val[from]] = true;
+    for (const auto &to : graph[from])
+    {
+      const int diff = std::abs(node_val[from] - node_val[to]);
+      used_edge_val[diff] = true;
+    }
   }
 }
 void generate_erase_node_val_list(int erase_cnt, std::vector<int> &node_list, const std::vector<int> &node_val, std::vector<int> &d, std::queue<int> &q)
@@ -217,11 +231,43 @@ int main()
   max_val_min = simulate(node_list, node_val);
   auto ret = node_val;
   int bit_shift = 0;
+  for (int simulate_count = 0;; ++simulate_count)
+  {
+    if (simulate_count == 5)
+    {
+      simulate_count = 0;
+      const auto end = std::chrono::system_clock::now();
+      const double time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+      if (time > 7500)
+        break;
+    }
+    const int node1 = xor64() % n;
+    const int node2 = xor64() % n;
+    std::swap(node_list[node1], node_list[node2]);
+    erase_node_val(node_list, node_val);
+    const int max_val = simulate(node_list, node_val);
+    if (chmin(max_val_min, max_val) or max_val_min == max_val)
+    {
+      ret = node_val;
+    }
+    else
+    {
+      std::swap(node_list[node1], node_list[node2]);
+    }
+  }
+  for (int i = 0; i <= max_val_min; ++i)
+  {
+    used_node_val[i] = false;
+    used_edge_val[i] = false;
+  }
+  node_val = ret;
+  used_val_from_node_val(node_val);
   node_list.clear();
   for (int simulate_count = 0;; ++simulate_count)
   {
     if (simulate_count == 5)
     {
+      simulate_count = 0;
       const auto end = std::chrono::system_clock::now();
       const double time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
       if (time > 9000)
