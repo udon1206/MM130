@@ -275,6 +275,7 @@ int main()
     }
     generate_erase_node_val_list(1 << bit_shift, node_list, node_val, d, q);
     erase_node_val(node_list, node_val);
+    std::reverse(node_list.begin(), node_list.end());
     const int max_val = simulate(node_list, node_val);
     if (chmin(max_val_min, max_val))
     {
