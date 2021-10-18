@@ -225,7 +225,8 @@ int main()
   std::queue<int> q;
   std::vector<int> node_list(n);
   std::iota(node_list.begin(), node_list.end(), 0);
-  std::shuffle(node_list.begin(), node_list.end(), rnd);
+  std::sort(node_list.begin(), node_list.end(), [&](int i, int j)
+            { return graph[i].size() > graph[j].size(); });
   std::vector<int> node_val(n, -1);
   max_val_min = simulate(node_list, node_val);
   auto ret = node_val;
@@ -253,6 +254,7 @@ int main()
       std::swap(node_list[node1], node_list[node2]);
     }
   }
+
   for (int i = 0; i < n; ++i)
   {
     cout << ret[i] << " \n"[i + 1 == n];
