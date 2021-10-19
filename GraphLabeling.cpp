@@ -56,7 +56,7 @@ int bfs(const int s, std::vector<int> &d, std::queue<int> &q)
     last = cur;
     for (const auto &nxt : graph[cur])
     {
-      if (chmin(d[nxt], d[s] + 1))
+      if (chmin(d[nxt], d[cur] + 1))
       {
         q.emplace(nxt);
       }
@@ -96,24 +96,14 @@ void input()
   }
 }
 
-int simulate(const std::vector<int> &node_list, std::vector<int> &node_val)
+int simulate(std::vector<int> node_list, std::vector<int> &node_val)
 {
   int node_val_cur = 0;
-  for (const auto &from : node_list)
+  for (; not node_list.empty(); ++node_val_cur)
   {
-    if (m <= 20000)
-      node_val_cur = 0;
-    assert(node_val[from] == -1);
-    while (true)
+    for (auto itr = node_list.begin(); itr != node_list.end(); itr++)
     {
-      while (used_node_val[node_val_cur])
-      {
-        node_val_cur += 1;
-      }
-      if (node_val_cur > max_val_min)
-      {
-        return inf;
-      }
+      const int from = *itr;
       bool node_val_ok = true;
       int graph_idx = 0;
       for (; graph_idx < (int)graph[from].size(); graph_idx++)
@@ -130,7 +120,11 @@ int simulate(const std::vector<int> &node_list, std::vector<int> &node_val)
         used_edge_val[diff] = true;
       }
       if (node_val_ok)
+      {
+        node_val[from] = node_val_cur;
+        (void)node_list.erase(itr);
         break;
+      }
       else
       {
         for (int i = 0; i < graph_idx; ++i)
@@ -142,14 +136,9 @@ int simulate(const std::vector<int> &node_list, std::vector<int> &node_val)
           used_edge_val[diff] = false;
         }
       }
-      node_val_cur += 1;
     }
-    assert(not used_node_val[node_val_cur]);
-    used_node_val[node_val_cur] = true;
-    node_val[from] = node_val_cur;
-    node_val_cur += 1;
   }
-  return *std::max_element(node_val.begin(), node_val.end());
+  return node_val_cur;
 }
 
 void erase_node_val(const std::vector<int> &node_list, std::vector<int> &node_val)
@@ -226,7 +215,10 @@ int main()
   std::vector<int> node_list(n);
   std::iota(node_list.begin(), node_list.end(), 0);
   std::sort(node_list.begin(), node_list.end(), [&](int i, int j)
-            { return graph[i].size() > graph[j].size(); });
+            { return graph[i].size() < graph[j].size(); });
+  // (void)bfs(node_list[0], d, q);
+  // std::sort(node_list.begin(), node_list.end(), [&](int i, int j)
+  //           { return d[i] < d[j]; });
   std::vector<int> node_val(n, -1);
   max_val_min = simulate(node_list, node_val);
   auto ret = node_val;
@@ -259,4 +251,10 @@ int main()
   {
     cout << ret[i] << " \n"[i + 1 == n];
   }
+
+  std::sort(ret.begin(), ret.end());
+  // for (const auto &e : ret)
+  // {
+  //   std::cerr << e << endl;
+  // }
 }
