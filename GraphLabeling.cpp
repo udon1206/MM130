@@ -46,46 +46,6 @@ bool used_node_val[MAX_NODE_VAL + 1];
 using bs = std::bitset<500>;
 bs bad_node;
 std::vector<bs> bitset_graph;
-int bfs(const int s, std::vector<int> &d, std::queue<int> &q)
-{
-  int last = -1;
-  d.assign(n, inf);
-  q.emplace(s);
-  d[s] = 0;
-  while (not q.empty())
-  {
-    const int cur = q.front();
-    q.pop();
-    last = cur;
-    for (const auto &nxt : graph[cur])
-    {
-      if (chmin(d[nxt], d[cur] + 1))
-      {
-        q.emplace(nxt);
-      }
-    }
-  }
-  assert(last >= 0);
-  return last;
-}
-
-int find_center()
-{
-  std::vector<int> d(n, inf);
-  std::queue<int> q;
-  const int end_point1 = bfs(0, d, q);
-  const int end_point2 = bfs(end_point1, d, q);
-  const int diameter = d[end_point2];
-  int center = -1;
-  for (int i = 0; i < n; ++i)
-  {
-    if (d[i] == diameter / 2)
-      center = i;
-  }
-  assert(center >= 0);
-  return center;
-}
-
 void input()
 {
   cin >> n >> m;
@@ -167,64 +127,14 @@ void erase_node_val(const std::vector<int> &node_list, std::vector<int> &node_va
     node_val[from] = -1;
   }
 }
-
-void used_val_from_node_val(const std::vector<int> &node_val)
-{
-  for (int from = 0; from < n; ++from)
-  {
-    used_node_val[node_val[from]] = true;
-    for (const auto &to : graph[from])
-    {
-      const int diff = std::abs(node_val[from] - node_val[to]);
-      used_edge_val[diff] = true;
-    }
-  }
-}
-void generate_erase_node_val_list(int erase_cnt, std::vector<int> &node_list, const std::vector<int> &node_val, std::vector<int> &d, std::queue<int> &q)
-{
-  d.assign(n, inf);
-  if (node_list.empty())
-  {
-    const int s = std::max_element(node_val.begin(), node_val.end()) - node_val.begin();
-    d[s] = 0;
-    q.emplace(s);
-    erase_cnt -= 1;
-    node_list.emplace_back(s);
-  }
-  else
-  {
-    for (const auto &e : node_list)
-    {
-      d[e] = 0;
-      q.emplace(e);
-      erase_cnt -= 1;
-    }
-  }
-  while (not q.empty())
-  {
-    const int cur = q.front();
-    q.pop();
-    for (const auto &nxt : graph[cur])
-    {
-      if (chmin(d[nxt], d[cur] + 1) and erase_cnt > 0)
-      {
-        node_list.emplace_back(nxt);
-        q.emplace(nxt);
-        erase_cnt -= 1;
-      }
-    }
-  }
-}
 int main()
 {
   auto start = std::chrono::system_clock::now();
   input();
-  std::vector<int> d(n);
-  std::queue<int> q;
   std::vector<int> node_list(n);
   std::iota(node_list.begin(), node_list.end(), 0);
   std::sort(node_list.begin(), node_list.end(), [&](int i, int j)
-            { return graph[i].size() < graph[j].size(); });
+            { return graph[i].size() > graph[j].size(); });
   std::vector<int> node_val(n, -1);
   double one_exe_time = 0;
   {
