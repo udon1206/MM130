@@ -61,7 +61,7 @@ void input()
   }
 }
 
-int simulate(std::vector<int> node_list, std::vector<int> &node_val)
+int simulate1(std::vector<int> node_list, std::vector<int> &node_val)
 {
   int node_val_cur = 0;
   for (; not node_list.empty(); ++node_val_cur)
@@ -110,6 +110,61 @@ int simulate(std::vector<int> node_list, std::vector<int> &node_val)
   return node_val_cur;
 }
 
+int simulate2(const std::vector<int> &node_list, std::vector<int> &node_val)
+{
+  int node_val_cur = 0;
+  for (const auto &from : node_list)
+  {
+    node_val_cur = 0;
+    assert(node_val[from] == -1);
+    while (true)
+    {
+      while (used_node_val[node_val_cur])
+      {
+        node_val_cur += 1;
+      }
+      if (node_val_cur > max_val_min)
+      {
+        return inf;
+      }
+      bool node_val_ok = true;
+      int graph_idx = 0;
+      for (; graph_idx < (int)graph[from].size(); graph_idx++)
+      {
+        const int to = graph[from][graph_idx];
+        if (node_val[to] == -1)
+          continue;
+        const int diff = std::abs(node_val_cur - node_val[to]);
+        if (used_edge_val[diff])
+        {
+          node_val_ok = false;
+          break;
+        }
+        used_edge_val[diff] = true;
+      }
+      if (node_val_ok)
+        break;
+      else
+      {
+        for (int i = 0; i < graph_idx; ++i)
+        {
+          const int to = graph[from][i];
+          if (node_val[to] == -1)
+            continue;
+          const int diff = std::abs(node_val_cur - node_val[to]);
+          used_edge_val[diff] = false;
+        }
+      }
+      node_val_cur += 1;
+    }
+    assert(not used_node_val[node_val_cur]);
+    used_node_val[node_val_cur] = true;
+    node_val[from] = node_val_cur;
+    node_val_cur += 1;
+  }
+  return *std::max_element(node_val.begin(), node_val.end());
+}
+
 void erase_node_val(const std::vector<int> &node_list, std::vector<int> &node_val)
 {
   for (const auto &from : node_list)
@@ -137,13 +192,27 @@ int main()
             { return graph[i].size() > graph[j].size(); });
   std::vector<int> node_val(n, -1);
   double one_exe_time = 0;
+  int exe_simulate_function = 1;
   {
     auto st = std::chrono::system_clock::now();
-    max_val_min = simulate(node_list, node_val);
+    max_val_min = simulate1(node_list, node_val);
     auto ed = std::chrono::system_clock::now();
     one_exe_time = std::chrono::duration_cast<std::chrono::milliseconds>(ed - st).count();
   }
   auto ret = node_val;
+  erase_node_val(node_list, node_val);
+  if (max_val_min < 10000)
+  {
+    auto st = std::chrono::system_clock::now();
+    const int max_val = simulate2(node_list, node_val);
+    auto ed = std::chrono::system_clock::now();
+    if (chmin(max_val_min, max_val))
+    {
+      ret = node_val;
+      exe_simulate_function = 2;
+      one_exe_time = std::chrono::duration_cast<std::chrono::milliseconds>(ed - st).count();
+    }
+  }
   for (int simulate_count = 0;; ++simulate_count)
   {
     if (simulate_count == 1)
@@ -157,8 +226,10 @@ int main()
     const int node1 = xor64() % n;
     const int node2 = xor64() % n;
     std::swap(node_list[node1], node_list[node2]);
+    if (node1 == node2)
+      continue;
     erase_node_val(node_list, node_val);
-    const int max_val = simulate(node_list, node_val);
+    const int max_val = exe_simulate_function == 1 ? simulate1(node_list, node_val) : simulate2(node_list, node_val);
     if (chmin(max_val_min, max_val) or max_val_min == max_val)
     {
       ret = node_val;
