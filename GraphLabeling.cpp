@@ -43,6 +43,9 @@ int max_val_min = inf;
 const int MAX_NODE_VAL = 2085044;
 bool used_edge_val[MAX_NODE_VAL + 1];
 bool used_node_val[MAX_NODE_VAL + 1];
+using bs = std::bitset<500>;
+bs bad_node;
+std::vector<bs> bitset_graph;
 int bfs(const int s, std::vector<int> &d, std::queue<int> &q)
 {
   int last = -1;
@@ -87,10 +90,12 @@ void input()
 {
   cin >> n >> m;
   graph.resize(n);
+  bitset_graph.resize(n);
   for (int i = 0; i < m; ++i)
   {
     int s, t;
     cin >> s >> t;
+    bitset_graph[s][t] = bitset_graph[t][s] = true;
     graph[s].emplace_back(t);
     graph[t].emplace_back(s);
   }
@@ -101,9 +106,12 @@ int simulate(std::vector<int> node_list, std::vector<int> &node_val)
   int node_val_cur = 0;
   for (; not node_list.empty(); ++node_val_cur)
   {
+    bad_node.reset();
     for (auto itr = node_list.begin(); itr != node_list.end(); itr++)
     {
       const int from = *itr;
+      if ((bad_node & bitset_graph[from]).count() > 0)
+        continue;
       bool node_val_ok = true;
       int graph_idx = 0;
       for (; graph_idx < (int)graph[from].size(); graph_idx++)
@@ -114,6 +122,7 @@ int simulate(std::vector<int> node_list, std::vector<int> &node_val)
         const int diff = std::abs(node_val_cur - node_val[to]);
         if (used_edge_val[diff])
         {
+          bad_node[to] = true;
           node_val_ok = false;
           break;
         }
@@ -216,11 +225,14 @@ int main()
   std::iota(node_list.begin(), node_list.end(), 0);
   std::sort(node_list.begin(), node_list.end(), [&](int i, int j)
             { return graph[i].size() < graph[j].size(); });
-  // (void)bfs(node_list[0], d, q);
-  // std::sort(node_list.begin(), node_list.end(), [&](int i, int j)
-  //           { return d[i] < d[j]; });
   std::vector<int> node_val(n, -1);
-  max_val_min = simulate(node_list, node_val);
+  double one_exe_time = 0;
+  {
+    auto st = std::chrono::system_clock::now();
+    max_val_min = simulate(node_list, node_val);
+    auto ed = std::chrono::system_clock::now();
+    one_exe_time = std::chrono::duration_cast<std::chrono::milliseconds>(ed - st).count();
+  }
   auto ret = node_val;
   for (int simulate_count = 0;; ++simulate_count)
   {
@@ -229,7 +241,7 @@ int main()
       simulate_count = 0;
       const auto end = std::chrono::system_clock::now();
       const double time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-      if (time > 8000)
+      if (time + one_exe_time * 2 > 9000)
         break;
     }
     const int node1 = xor64() % n;
@@ -251,10 +263,4 @@ int main()
   {
     cout << ret[i] << " \n"[i + 1 == n];
   }
-
-  std::sort(ret.begin(), ret.end());
-  // for (const auto &e : ret)
-  // {
-  //   std::cerr << e << endl;
-  // }
 }
