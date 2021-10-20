@@ -74,6 +74,11 @@ struct MyEasyBitset
     }
   }
 
+  void reset()
+  {
+    S1 = S2 = 0;
+  }
+
   bool get(int idx) const
   {
     if (idx >= 64)
@@ -249,6 +254,29 @@ void erase_node_val(const std::vector<int> &node_list, std::vector<int> &node_va
     node_val[from] = -1;
   }
 }
+
+struct State
+{
+  int n;
+  int used_node_val_count;
+  std::vector<int> node_val;
+  std::bitset<10000> used_edge_val;
+  State(int n) : n(n), used_node_val_count(0)
+  {
+    node_val.assign(n, -1);
+    used_edge_val.reset();
+  }
+
+  bool operator<(const State &s) const
+  {
+    return used_node_val_count < s.used_node_val_count;
+  }
+
+  bool operator>(const State &s) const
+  {
+    return used_node_val_count > s.used_node_val_count;
+  }
+};
 int main()
 {
   auto start = std::chrono::system_clock::now();
@@ -266,31 +294,96 @@ int main()
     auto ed = std::chrono::system_clock::now();
     one_exe_time = std::chrono::duration_cast<std::chrono::milliseconds>(ed - st).count();
   }
+
   auto ret = node_val;
-  erase_node_val(node_list, node_val);
   if (max_val_min < 10000 and n < 120)
   {
-    auto st = std::chrono::system_clock::now();
-    bad_nodes.assign(max_val_min + 1, MyEasyBitset());
-    const int max_val = simulate2(node_list, node_val);
-    auto ed = std::chrono::system_clock::now();
-    if (chmin(max_val_min, max_val))
+    const int beam_width = 1000;
+    const int transition = 5;
+    MyEasyBitset bad_node;
+    std::priority_queue<State, std::vector<State>, std::greater<State>> pq, npq;
+    pq.emplace(State(n));
+    State st(n);
+    for (int node_val_cur = 0;; ++node_val_cur)
     {
-      ret = node_val;
-      exe_simulate_function = 2;
-      one_exe_time = std::chrono::duration_cast<std::chrono::milliseconds>(ed - st).count();
+      // std::cerr << node_val_cur << " " << pq.top().used_node_val_count << "\n";
+      while (not pq.empty())
+      {
+        st = pq.top();
+        pq.pop();
+        int remain_transition = transition;
+        bad_node.reset();
+        for (const auto &node : node_list)
+        {
+          const int from = node;
+          if (st.node_val[from] >= 0)
+            continue;
+          if (bad_node.and_any(my_easy_bitset_graph[from]))
+            continue;
+          bool node_val_ok = true;
+          int graph_idx = 0;
+          for (; graph_idx < (int)graph[from].size(); graph_idx++)
+          {
+            const int to = graph[from][graph_idx];
+            if (st.node_val[to] == -1)
+              continue;
+            const int diff = std::abs(node_val_cur - st.node_val[to]);
+            if (st.used_edge_val[diff])
+            {
+              bad_node.set(to, true);
+              node_val_ok = false;
+              break;
+            }
+            st.used_edge_val[diff] = true;
+          }
+          if (node_val_ok)
+          {
+            st.node_val[from] = node_val_cur;
+            st.used_node_val_count += 1;
+            npq.emplace(st);
+            if (st.used_node_val_count == n)
+            {
+              ret = st.node_val;
+              for (int i = 0; i < n; ++i)
+              {
+                cout << ret[i] << " \n"[i + 1 == n];
+              }
+              return 0;
+            }
+            if ((int)npq.size() > beam_width)
+              npq.pop();
+            st.node_val[from] = -1;
+            st.used_node_val_count -= 1;
+            remain_transition -= 1;
+            if (remain_transition == 0)
+              break;
+          }
+          for (int i = 0; i < graph_idx; ++i)
+          {
+            const int to = graph[from][i];
+            if (st.node_val[to] == -1)
+              continue;
+            const int diff = std::abs(node_val_cur - st.node_val[to]);
+            st.used_edge_val[diff] = false;
+          }
+        }
+        if (remain_transition == transition)
+          npq.emplace(st);
+      }
+      std::swap(pq, npq);
+      while ((int)pq.size() > beam_width)
+        pq.pop();
     }
   }
-  for (int simulate_count = 0;; ++simulate_count)
+
+  std::cerr << exe_simulate_function << endl;
+  int simulate_count = 0;
+  for (;; ++simulate_count)
   {
-    if (simulate_count == 1)
-    {
-      simulate_count = 0;
-      const auto end = std::chrono::system_clock::now();
-      const double time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-      if (time + one_exe_time * 2 > 9000)
-        break;
-    }
+    const auto end = std::chrono::system_clock::now();
+    const double time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    if (time + one_exe_time * 2 > 9000)
+      break;
     const int node1 = xor64() % n;
     const int node2 = xor64() % n;
     std::swap(node_list[node1], node_list[node2]);
@@ -311,7 +404,6 @@ int main()
       std::swap(node_list[node1], node_list[node2]);
     }
   }
-
   for (int i = 0; i < n; ++i)
   {
     cout << ret[i] << " \n"[i + 1 == n];
