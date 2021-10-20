@@ -298,85 +298,99 @@ int main()
   auto ret = node_val;
   if (max_val_min < 10000 and n < 120)
   {
-    const int beam_width = 1000;
-    const int transition = 5;
-    MyEasyBitset bad_node;
-    std::priority_queue<State, std::vector<State>, std::greater<State>> pq, npq;
-    pq.emplace(State(n));
-    State st(n);
-    for (int node_val_cur = 0;; ++node_val_cur)
+    auto beam_search = [&]() -> void
     {
-      // std::cerr << node_val_cur << " " << pq.top().used_node_val_count << "\n";
-      while (not pq.empty())
+      int beam_width = 2000;
+      if (max_val_min < 1000)
       {
-        st = pq.top();
-        pq.pop();
-        int remain_transition = transition;
-        bad_node.reset();
-        for (const auto &node : node_list)
-        {
-          const int from = node;
-          if (st.node_val[from] >= 0)
-            continue;
-          if (bad_node.and_any(my_easy_bitset_graph[from]))
-            continue;
-          bool node_val_ok = true;
-          int graph_idx = 0;
-          for (; graph_idx < (int)graph[from].size(); graph_idx++)
-          {
-            const int to = graph[from][graph_idx];
-            if (st.node_val[to] == -1)
-              continue;
-            const int diff = std::abs(node_val_cur - st.node_val[to]);
-            if (st.used_edge_val[diff])
-            {
-              bad_node.set(to, true);
-              node_val_ok = false;
-              break;
-            }
-            st.used_edge_val[diff] = true;
-          }
-          if (node_val_ok)
-          {
-            st.node_val[from] = node_val_cur;
-            st.used_node_val_count += 1;
-            npq.emplace(st);
-            if (st.used_node_val_count == n)
-            {
-              ret = st.node_val;
-              for (int i = 0; i < n; ++i)
-              {
-                cout << ret[i] << " \n"[i + 1 == n];
-              }
-              return 0;
-            }
-            if ((int)npq.size() > beam_width)
-              npq.pop();
-            st.node_val[from] = -1;
-            st.used_node_val_count -= 1;
-            remain_transition -= 1;
-            if (remain_transition == 0)
-              break;
-          }
-          for (int i = 0; i < graph_idx; ++i)
-          {
-            const int to = graph[from][i];
-            if (st.node_val[to] == -1)
-              continue;
-            const int diff = std::abs(node_val_cur - st.node_val[to]);
-            st.used_edge_val[diff] = false;
-          }
-        }
-        if (remain_transition == transition)
-          npq.emplace(st);
+        beam_width = 5000;
       }
-      std::swap(pq, npq);
-      while ((int)pq.size() > beam_width)
-        pq.pop();
-    }
+      else if (max_val_min < 5000)
+      {
+        beam_width = 1500;
+      }
+      else
+      {
+        beam_width = 1000;
+      }
+      const int transition = 2;
+      MyEasyBitset bad_node;
+      std::priority_queue<State, std::vector<State>, std::greater<State>> pq, npq;
+      pq.emplace(State(n));
+      State st(n);
+      for (int node_val_cur = 0;; ++node_val_cur)
+      {
+        // std::cerr << node_val_cur << " " << pq.top().used_node_val_count << "\n";
+        while (not pq.empty())
+        {
+          st = pq.top();
+          pq.pop();
+          int remain_transition = transition;
+          bad_node.reset();
+          for (const auto &node : node_list)
+          {
+            const int from = node;
+            if (st.node_val[from] >= 0)
+              continue;
+            if (bad_node.and_any(my_easy_bitset_graph[from]))
+              continue;
+            bool node_val_ok = true;
+            int graph_idx = 0;
+            for (; graph_idx < (int)graph[from].size(); graph_idx++)
+            {
+              const int to = graph[from][graph_idx];
+              if (st.node_val[to] == -1)
+                continue;
+              const int diff = std::abs(node_val_cur - st.node_val[to]);
+              if (st.used_edge_val[diff])
+              {
+                bad_node.set(to, true);
+                node_val_ok = false;
+                break;
+              }
+              st.used_edge_val[diff] = true;
+            }
+            if (node_val_ok)
+            {
+              st.node_val[from] = node_val_cur;
+              st.used_node_val_count += 1;
+              npq.emplace(st);
+              if (st.used_node_val_count == n)
+              {
+                ret = st.node_val;
+                max_val_min = node_val_cur;
+                return;
+              }
+              if ((int)npq.size() > beam_width)
+                npq.pop();
+              st.node_val[from] = -1;
+              st.used_node_val_count -= 1;
+              remain_transition -= 1;
+              if (remain_transition == 0)
+                break;
+            }
+            for (int i = 0; i < graph_idx; ++i)
+            {
+              const int to = graph[from][i];
+              if (st.node_val[to] == -1)
+                continue;
+              const int diff = std::abs(node_val_cur - st.node_val[to]);
+              st.used_edge_val[diff] = false;
+            }
+          }
+          if (remain_transition == transition)
+            npq.emplace(st);
+        }
+        std::swap(pq, npq);
+        while ((int)pq.size() > beam_width)
+          pq.pop();
+      }
+    };
+    beam_search();
+    exe_simulate_function = 2;
+    std::sort(node_list.begin(), node_list.end(), [&](int i, int j)
+              { return ret[i] < ret[j]; });
   }
-
-  std::cerr << exe_simulate_function << endl;
   int simulate_count = 0;
   for (;; ++simulate_count)
   {
