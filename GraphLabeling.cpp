@@ -36,6 +36,58 @@ uint32_t xor64(void)
   return x = x ^ (x << 17);
 }
 
+struct MyEasyBitset
+{
+  unsigned long long S1, S2;
+  MyEasyBitset() : S1(0), S2(0) {}
+
+  void set(int idx, bool val)
+  {
+
+    if (idx >= 64)
+    {
+      if (val)
+      {
+        S2 = S2 | (1LL << (idx - 64));
+      }
+      else
+      {
+        if (S2 >> (idx - 64) & 1)
+        {
+          S2 ^= (1LL << (idx - 64));
+        }
+      }
+    }
+    else
+    {
+      if (val)
+      {
+        S1 = S1 | (1LL << idx);
+      }
+      else
+      {
+        if (S1 >> idx & 1)
+        {
+          S1 ^= (1LL << idx);
+        }
+      }
+    }
+  }
+
+  bool get(int idx) const
+  {
+    if (idx >= 64)
+      return S2 >> (idx - 64) & 1;
+    else
+      return S1 >> idx & 1;
+  }
+
+  bool and_any(const MyEasyBitset &e) const
+  {
+    return ((S1 & e.S1) > 0) or ((S2 & e.S2) > 0);
+  }
+};
+
 int n;
 int m;
 std::vector<std::vector<int>> graph;
@@ -46,16 +98,25 @@ bool used_node_val[MAX_NODE_VAL + 1];
 using bs = std::bitset<500>;
 bs bad_node;
 std::vector<bs> bitset_graph;
+std::vector<MyEasyBitset> my_easy_bitset_graph;
+std::vector<MyEasyBitset> bad_nodes;
 void input()
 {
   cin >> n >> m;
   graph.resize(n);
   bitset_graph.resize(n);
+  if (n < 120)
+    my_easy_bitset_graph.resize(n);
   for (int i = 0; i < m; ++i)
   {
     int s, t;
     cin >> s >> t;
     bitset_graph[s][t] = bitset_graph[t][s] = true;
+    if (n < 120)
+    {
+      my_easy_bitset_graph[s].set(t, 1);
+      my_easy_bitset_graph[t].set(s, 1);
+    }
     graph[s].emplace_back(t);
     graph[t].emplace_back(s);
   }
@@ -127,6 +188,11 @@ int simulate2(const std::vector<int> &node_list, std::vector<int> &node_val)
       {
         return inf;
       }
+      if (bad_nodes[node_val_cur].and_any(my_easy_bitset_graph[from]))
+      {
+        node_val_cur += 1;
+        continue;
+      }
       bool node_val_ok = true;
       int graph_idx = 0;
       for (; graph_idx < (int)graph[from].size(); graph_idx++)
@@ -137,6 +203,7 @@ int simulate2(const std::vector<int> &node_list, std::vector<int> &node_val)
         const int diff = std::abs(node_val_cur - node_val[to]);
         if (used_edge_val[diff])
         {
+          bad_nodes[node_val_cur].set(to, 1);
           node_val_ok = false;
           break;
         }
@@ -201,9 +268,10 @@ int main()
   }
   auto ret = node_val;
   erase_node_val(node_list, node_val);
-  if (max_val_min < 10000)
+  if (max_val_min < 10000 and n < 120)
   {
     auto st = std::chrono::system_clock::now();
+    bad_nodes.assign(max_val_min + 1, MyEasyBitset());
     const int max_val = simulate2(node_list, node_val);
     auto ed = std::chrono::system_clock::now();
     if (chmin(max_val_min, max_val))
@@ -229,6 +297,10 @@ int main()
     if (node1 == node2)
       continue;
     erase_node_val(node_list, node_val);
+    if (exe_simulate_function == 2)
+    {
+      bad_nodes.assign(max_val_min + 1, MyEasyBitset());
+    }
     const int max_val = exe_simulate_function == 1 ? simulate1(node_list, node_val) : simulate2(node_list, node_val);
     if (chmin(max_val_min, max_val) or max_val_min == max_val)
     {
